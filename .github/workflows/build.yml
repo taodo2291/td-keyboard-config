@@ -3,6 +3,7 @@ on:
   workflow_dispatch:
   push:
     paths:
+      - ".github/workflows/**"
       - "firmware/zmk/config/**"
       - "firmware/zmk/build.yaml"
 

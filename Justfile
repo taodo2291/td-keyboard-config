@@ -112,7 +112,7 @@ flash expr: (build expr)
 
 # initialize west
 init:
-    west init -l config
+    west init -l firmware/zmk/config
     west update --fetch-opt=--filter=blob:none
     west zephyr-export
 
