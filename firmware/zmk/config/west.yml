@@ -70,4 +70,4 @@ manifest:
           - nanopb
 
   self:
-    path: config
+    path: firmware/zmk/config
