@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<interface>
+  <object class="GtkMenu" id="menu">
+    <child>
+      <object class="GtkMenuItem" id="vietnamese">
+        <property name="label">   Toggle Language (VI/EN)</property>
+      </object>
+    </child>
+    <child>
+      <object class="GtkMenuItem" id="qwerty">
+        <property name="label">󰌌   Toggle Layout (QWERTY/COLEMAK)</property>
+      </object>
+    </child>
+    <child>
+      <object class="GtkSeparatorMenuItem" id="delimiter1"/>
+    </child>
+    <child>
+      <object class="GtkMenuItem" id="tui">
+        <property name="label">   Configure Keyboard</property>
+      </object>
+    </child>
+  </object>
+</interface>

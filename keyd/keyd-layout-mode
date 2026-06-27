@@ -1,0 +1,125 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Two-dimension state model:
+#   Dimension 1 - keyd layout: colemakdh | qwerty  (persisted in STATE file)
+#   Dimension 2 - fcitx language: us | vietnamese   (queried live from fcitx5-remote)
+#
+# Three effective keyd configurations:
+#   colemakdh            = full Colemak-DH with home-row mods + combos (keyd bind reset)
+#   colemakdh-vietnamese = Colemak-DH alpha only, no mods/combos (vietnamese.bind)
+#   qwerty               = plain QWERTY, no mods/combos (qwerty.bind)
+
+STATE=/run/keyd-laptop-layout
+RUNTIME_DIR=/etc/keyd/runtime
+REAL_USER=ntv
+REAL_UID=1000
+
+action="${1:-toggle-vietnamese}"
+layout="$(cat "$STATE" 2>/dev/null || echo colemakdh)"
+
+# --- Helpers ---
+
+fcitx_cmd() {
+  runuser -u "$REAL_USER" -- \
+    env DBUS_SESSION_BUS_ADDRESS="unix:path=/run/user/$REAL_UID/bus" \
+    fcitx5-remote "$@"
+}
+
+is_vietnamese() {
+  # fcitx5-remote returns: 1 = inactive/closed, 2 = active/open
+  # On this system, state 1 is Vietnamese (Unikey active) and state 2 is English (us)
+  [[ "$(fcitx_cmd 2>/dev/null)" == "1" ]]
+}
+
+apply_file() {
+  local file="$1"
+  local args=()
+  while IFS= read -r line; do
+    [[ -z "$line" || "$line" =~ ^[[:space:]]*# ]] && continue
+    args+=("$line")
+  done < "$file"
+
+  keyd bind reset
+  if [ ${#args[@]} -gt 0 ]; then
+    keyd bind "${args[@]}"
+  fi
+}
+
+apply_keyd_for_state() {
+  # Apply the correct keyd bindings based on (layout, vietnamese)
+  local lay="$1"    # colemakdh | qwerty
+  local viet="$2"   # true | false
+
+  if [[ "$lay" == "qwerty" ]]; then
+    apply_file "$RUNTIME_DIR/qwerty.bind"
+  elif [[ "$viet" == "true" ]]; then
+    # colemakdh + vietnamese => colemakdh-vietnamese (no mods/combos)
+    apply_file "$RUNTIME_DIR/vietnamese.bind"
+  else
+    # colemakdh + english => full colemakdh (mods + combos from config)
+    keyd bind reset
+  fi
+}
+
+notify_waybar() {
+  pkill -RTMIN+8 waybar 2>/dev/null || true
+}
+
+# --- Actions ---
+
+case "$action" in
+  toggle-vietnamese)
+    # CapsLock toggle: switch fcitx language, adapt keyd accordingly
+    # Layout dimension (colemakdh/qwerty) is preserved.
+    #
+    # Transition matrix:
+    #   (us, colemakdh)            => (vietnamese, colemakdh-vietnamese)
+    #   (us, qwerty)               => (vietnamese, qwerty)
+    #   (us, colemakdh-vietnamese) => (vietnamese, colemakdh-vietnamese)  [edge case]
+    #   (vietnamese, colemakdh)    => (us, colemakdh)                    [edge case]
+    #   (vietnamese, qwerty)       => (us, qwerty)
+    #   (vietnamese, colemakdh-vi) => (us, colemakdh)
+
+    if is_vietnamese; then
+      # Currently Vietnamese (state 1) => switch to English (us, state 2)
+      fcitx_cmd -o
+      apply_keyd_for_state "$layout" "false"
+    else
+      # Currently English (state 2) => switch to Vietnamese (state 1)
+      fcitx_cmd -c
+      apply_keyd_for_state "$layout" "true"
+    fi
+    # Layout dimension unchanged, no need to update STATE
+    notify_waybar
+    ;;
+
+  toggle-qwerty)
+    # Meta+Alt+Shift+T: toggle keyd layout between colemakdh <=> qwerty
+    # Fcitx language dimension is preserved.
+    #
+    # Transition matrix:
+    #   (*, colemakdh)            => (*, qwerty)
+    #   (*, colemakdh-vietnamese) => (*, qwerty)
+    #   (*, qwerty) + us          => (*, colemakdh)
+    #   (*, qwerty) + vietnamese  => (*, colemakdh-vietnamese)
+
+    viet="false"
+    is_vietnamese && viet="true"
+
+    if [[ "$layout" == "qwerty" ]]; then
+      layout=colemakdh
+    else
+      layout=qwerty
+    fi
+
+    apply_keyd_for_state "$layout" "$viet"
+    printf '%s\n' "$layout" > "$STATE"
+    notify_waybar
+    ;;
+
+  *)
+    echo "Usage: keyd-layout-mode {toggle-vietnamese|toggle-qwerty}" >&2
+    exit 1
+    ;;
+esac

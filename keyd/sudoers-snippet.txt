@@ -1,0 +1,6 @@
+# ── Add via: sudo visudo -f /etc/sudoers.d/keyd-layout ──
+#
+# Allows ntv to run keyd-layout-mode without password prompt.
+# Required for: CapsLock keyd binding, Waybar on-click, and keyd-tui.
+
+ntv ALL=(ALL) NOPASSWD: /usr/local/bin/keyd-layout-mode
