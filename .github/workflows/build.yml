@@ -3,9 +3,12 @@ on:
   workflow_dispatch:
   push:
     paths:
-      - "config/**"
-      - "build.yaml"
+      - "firmware/zmk/config/**"
+      - "firmware/zmk/build.yaml"
 
 jobs:
   build:
     uses: zmkfirmware/zmk/.github/workflows/build-user-config.yml@main
+    with:
+      build_matrix_path: firmware/zmk/build.yaml
+      config_path: firmware/zmk/config

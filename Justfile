@@ -1,12 +1,12 @@
 default:
     @just --list --unsorted
 
-config := absolute_path('config')
+config := absolute_path('firmware/zmk/config')
 build := absolute_path('.build')
 out := absolute_path('firmware')
-draw := absolute_path('draw')
+draw := absolute_path('firmware/zmk/draw')
 
-build_matrix := "build.yaml"
+build_matrix := "firmware/zmk/build.yaml"
 
 # parse build.yaml and filter targets by expression
 _parse_targets $expr: _check_yq_version
